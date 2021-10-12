@@ -1,7 +1,8 @@
 import { Router } from "express";
 import db from '../models/index.js'
+import user from "../models/user.js";
 
-const { Board } = db;
+const { Board,User } = db;
 
 const boardsRouter = Router();
 
@@ -24,6 +25,10 @@ res.status(500).send({msg:"서버에 문제 발생"})
     try{
     
       const findBoard = await Board.findOne({
+        include:[{
+          model: User,
+          attributes:["id","name"]
+        }],
         where: {
           id: req.params.id
         }
@@ -45,12 +50,14 @@ res.status(500).send({msg:"서버에 문제 발생"})
   //유저생성
   boardsRouter.post("/", async(req, res) => {
     try{
-      const {content, title} = req.body;
+      const {content, title,userId} = req.body;
+      const weiter = await User.findOne({id:userId});
       if(!title) res.status(400).send({msg:"입력요청값이 잘못됨"})
 
       const result = await Board.create({
         title: title ? title : null,
-        content: content ? content: null
+        content: content ? content: null,
+        userId: userId ? userId : null
       })
 
       res.status(201).send({

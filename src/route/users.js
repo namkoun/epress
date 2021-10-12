@@ -2,11 +2,12 @@ import { Router } from "express";
 import _ from "lodash";
 import sequelize from "sequelize";
 import faker from "faker";
-import bcrypt from "bcrypt";
+
 import db from "../models/index.js";
 
+
 faker.locale = "ko";
-const { User } = db;
+const { User, Permission,Board } = db;
 
 
 
@@ -46,34 +47,51 @@ const usersRouter = Router();
     }
   });
   
-  usersRouter.get("/:id", (req, res) => {
-    const findUser = _.find(User, {id: parseInt(req.params.id)});
-    let msg;
-    if(findUser){
-        msg = "정상적으로 조회되었습니다.";
-        res.status(200).send({
-            msg, findUser
-        });
-    } else {
-        msg = "해당 아이디를 가진 유저가 없습니다.";
-        res.status(400).send({
-            msg, findUser
-        });
+  usersRouter.get("/:id", async(req, res) => {
+    try{
+      const findUser = await User.findOne({
+        include:[Permission, Board],
+        include:[{
+          model: Permission,
+          attributes: ["id","title","level"],
+        },{
+          model:Board,
+          attributes:["id","title"]
+        }],
+        where:{
+          id: req.params.id
+        }
+      });
+      res.status(200).send({
+        findUser
+    });
+
+    }catch(err){
+      console.log(err);
+      res.status(500).send("문제있음 확인바람")
     }
-    
+  
 });
 
   
   //유저생성
   usersRouter.post("/", async(req, res) => {
 try{
-    const { name , age } = req.body;
+    const { name , age, permission } = req.body;
   
     if(!name || !age ) res.status(400).send({ msg: "입력갓이 ㅈ잘못되었습니다"});
       
-    const result = await User.create({name, age});
+    const user = await User.create({name, age});
+
+    await user.createPermission({
+      title: permission.title,
+      level: permission.level,
+      name: permission.name,
+      age: permission.age,
+    })
+
     res.status(201).send({
-      msg: `id ${result.id}, ${result.name} 유저가 생성되었습니다.`
+      msg: `id ${user.id}, ${user.name} 유저가 생성되었습니다.`
     });
       
   }catch(err){
